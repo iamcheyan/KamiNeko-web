@@ -1,4 +1,4 @@
-class MarkdownEditor {
+class TextEditor {
     constructor() {
         this.tabs = [];
         this.activeTabId = null;
@@ -9,13 +9,20 @@ class MarkdownEditor {
         this.rightMode = 'edit'; // 'edit' or 'preview'
         this.autoSaveTimer = null; // 自动保存定时器
         this.autoSaveDelay = 2000; // 2秒后自动保存
+        this.statusResetTimer = null;
         
         this.initializeElements();
         this.setupEventListeners();
-        this.setupMarked();
+        this.setupTabSorting();
+
+        this.updateStatus('就绪');
+        
+        // 加载设置
         this.loadSettings();
+        
+        // 初始化后加载标签
         this.loadTabs().then(() => {
-            // 如果没有标签，创建一个默认标签
+            // 如果没有标签，创建一个新标签
             if (this.tabs.length === 0) {
                 this.createNewTab();
             }
@@ -26,37 +33,33 @@ class MarkdownEditor {
         this.tabsContainer = document.getElementById('tabs');
         this.newTabBtn = document.getElementById('newTabBtn');
         this.textEditor = document.getElementById('textEditor');
-        this.markdownEditor = document.getElementById('markdownEditor');
-        this.textPreview = document.getElementById('textPreview');
-        this.markdownPreview = document.getElementById('markdownPreview');
-        this.leftModeToggle = document.getElementById('leftModeToggle');
-        this.rightModeToggle = document.getElementById('rightModeToggle');
         this.themeToggle = document.getElementById('themeToggle');
         this.saveBtn = document.getElementById('saveBtn');
         this.fontSizeSlider = document.getElementById('fontSizeSlider');
         this.fontSizeValue = document.getElementById('fontSizeValue');
-        this.resizeHandle = document.getElementById('resizeHandle');
         this.editorPane = document.querySelector('.editor-pane');
-        this.previewPane = document.querySelector('.preview-pane');
     }
     
     setupEventListeners() {
         // 新建标签
         this.newTabBtn.addEventListener('click', () => this.createNewTab());
         
-        // 编辑器内容变化
-        this.textEditor.addEventListener('input', () => {
-            this.updateFromText();
-            this.scheduleAutoSave();
-        });
-        this.markdownEditor.addEventListener('input', () => {
-            this.updateFromMarkdown();
-            this.scheduleAutoSave();
+        // 标签容器双击空白区域新建标签
+        this.tabsContainer.addEventListener('dblclick', (e) => {
+            // 如果双击的是标签容器本身（空白区域），而不是其子元素
+            if (e.target === this.tabsContainer) {
+                this.createNewTab();
+            }
         });
         
-        // 模式切换
-        this.leftModeToggle.addEventListener('click', () => this.toggleLeftMode());
-        this.rightModeToggle.addEventListener('click', () => this.toggleRightMode());
+        // 编辑器内容变化
+        this.textEditor.addEventListener('input', () => {
+            this.scheduleAutoSave();
+            // 实时更新标签标题
+            if (this.activeTabId) {
+                this.updateTabTitle(this.activeTabId);
+            }
+        });
         
         // 主题切换
         this.themeToggle.addEventListener('click', () => this.toggleTheme());
@@ -91,56 +94,8 @@ class MarkdownEditor {
             this.saveSettings();
         });
         
-        // 调整分栏大小
-        this.setupResizeHandle();
-        
         // 设置标签拖拽排序
         this.setupTabSorting();
-    }
-    
-    setupMarked() {
-        // 配置 marked
-        marked.setOptions({
-            highlight: function(code, lang) {
-                if (lang && hljs.getLanguage(lang)) {
-                    try {
-                        return hljs.highlight(code, { language: lang }).value;
-                    } catch (err) {}
-                }
-                return hljs.highlightAuto(code).value;
-            },
-            breaks: true,
-            gfm: true
-        });
-    }
-    
-    setupResizeHandle() {
-        let isResizing = false;
-        
-        this.resizeHandle.addEventListener('mousedown', (e) => {
-            isResizing = true;
-            document.addEventListener('mousemove', handleMouseMove);
-            document.addEventListener('mouseup', handleMouseUp);
-            e.preventDefault();
-        });
-        
-        const handleMouseMove = (e) => {
-            if (!isResizing) return;
-            
-            const containerRect = document.querySelector('.editor-container').getBoundingClientRect();
-            const newLeftWidth = ((e.clientX - containerRect.left) / containerRect.width) * 100;
-            
-            if (newLeftWidth > 20 && newLeftWidth < 80) {
-                this.editorPane.style.flex = `0 0 ${newLeftWidth}%`;
-                this.previewPane.style.flex = `0 0 ${100 - newLeftWidth}%`;
-            }
-        };
-        
-        const handleMouseUp = () => {
-            isResizing = false;
-            document.removeEventListener('mousemove', handleMouseMove);
-            document.removeEventListener('mouseup', handleMouseUp);
-        };
     }
     
     setupTabSorting() {
@@ -193,9 +148,6 @@ class MarkdownEditor {
                 // 如果没有标签了，创建一个新的
                 this.activeTabId = null;
                 this.textEditor.value = '';
-                this.markdownEditor.value = '';
-                this.updateLeftPane();
-                this.updateRightPane();
                 this.createNewTab();
             }
         }
@@ -231,9 +183,6 @@ class MarkdownEditor {
                 // 如果没有标签了，创建一个新的
                 this.activeTabId = null;
                 this.textEditor.value = '';
-                this.markdownEditor.value = '';
-                this.updateLeftPane();
-                this.updateRightPane();
                 this.createNewTab();
             }
         }
@@ -248,7 +197,6 @@ class MarkdownEditor {
             const currentTab = this.tabs.find(tab => tab.id === this.activeTabId);
             if (currentTab) {
                 currentTab.textContent = this.textEditor.value;
-                currentTab.markdownContent = this.markdownEditor.value;
             }
         }
         
@@ -257,9 +205,8 @@ class MarkdownEditor {
         const tab = this.tabs.find(tab => tab.id === tabId);
         if (tab) {
             this.textEditor.value = tab.textContent || '';
-            this.markdownEditor.value = tab.markdownContent || '';
-            this.updateLeftPane();
-            this.updateRightPane();
+            // 切换标签后更新标题
+            this.updateTabTitle(tabId);
         }
         
         this.renderTabs();
@@ -306,123 +253,11 @@ class MarkdownEditor {
         }
     }
     
-    toggleLeftMode() {
-        this.leftMode = this.leftMode === 'edit' ? 'preview' : 'edit';
-        this.updateLeftPane();
-        this.leftModeToggle.textContent = this.leftMode === 'edit' ? '📝' : '👁️';
-    }
-    
-    toggleRightMode() {
-        this.rightMode = this.rightMode === 'edit' ? 'preview' : 'edit';
-        this.updateRightPane();
-        this.rightModeToggle.textContent = this.rightMode === 'edit' ? '📝' : '👁️';
-    }
-    
-    updateLeftPane() {
-        if (this.leftMode === 'edit') {
-            this.textEditor.style.display = 'block';
-            this.textPreview.style.display = 'none';
-        } else {
-            this.textEditor.style.display = 'none';
-            this.textPreview.style.display = 'block';
-            // 将markdown内容渲染为HTML显示在左侧预览
-            const markdownContent = this.markdownEditor.value;
-            this.textPreview.innerHTML = marked.parse(markdownContent);
-            this.highlightCode(this.textPreview);
-        }
-    }
-    
-    updateRightPane() {
-        if (this.rightMode === 'edit') {
-            this.markdownEditor.style.display = 'block';
-            this.markdownPreview.style.display = 'none';
-        } else {
-            this.markdownEditor.style.display = 'none';
-            this.markdownPreview.style.display = 'block';
-            // 将文本内容转换为markdown并渲染
-            const textContent = this.textEditor.value;
-            const markdownContent = this.textToMarkdown(textContent);
-            this.markdownPreview.innerHTML = marked.parse(markdownContent);
-            this.highlightCode(this.markdownPreview);
-        }
-    }
-    
-    updateFromText() {
-        const textContent = this.textEditor.value;
-        const markdownContent = this.textToMarkdown(textContent);
-        this.markdownEditor.value = markdownContent;
-        
-        // 更新预览
-        this.updateLeftPane();
-        this.updateRightPane();
-        
-        // 保存当前标签内容
-        this.saveCurrentTabContent();
-    }
-    
-    updateFromMarkdown() {
-        const markdownContent = this.markdownEditor.value;
-        const textContent = this.markdownToText(markdownContent);
-        this.textEditor.value = textContent;
-        
-        // 更新预览
-        this.updateLeftPane();
-        this.updateRightPane();
-        
-        // 保存当前标签内容
-        this.saveCurrentTabContent();
-    }
-    
-    textToMarkdown(text) {
-        // 简单的文本到Markdown转换
-        return text
-            .split('\n')
-            .map(line => {
-                line = line.trim();
-                if (!line) return '';
-                
-                // 检测标题（以多个#开头或全大写短行）
-                if (line.match(/^#{1,6}\s/)) {
-                    return line;
-                } else if (line.length < 50 && line === line.toUpperCase() && line.match(/[A-Z]/)) {
-                    return `## ${line}`;
-                }
-                // 检测列表项
-                else if (line.match(/^[-*•]\s/) || line.match(/^\d+\.\s/)) {
-                    return line.replace(/^[-*•]\s/, '- ');
-                }
-                // 普通段落
-                else {
-                    return line;
-                }
-            })
-            .join('\n');
-    }
-    
-    markdownToText(markdown) {
-        // 简单的Markdown到文本转换
-        return markdown
-            .replace(/^#{1,6}\s+/gm, '') // 移除标题标记
-            .replace(/\*\*(.*?)\*\*/g, '$1') // 移除粗体
-            .replace(/\*(.*?)\*/g, '$1') // 移除斜体
-            .replace(/`(.*?)`/g, '$1') // 移除行内代码
-            .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // 移除链接，保留文本
-            .replace(/^[-*+]\s+/gm, '• ') // 转换列表标记
-            .replace(/^\d+\.\s+/gm, '• '); // 转换数字列表
-    }
-    
-    highlightCode(element) {
-        element.querySelectorAll('pre code').forEach((block) => {
-            hljs.highlightElement(block);
-        });
-    }
-    
     saveCurrentTabContent() {
         if (this.activeTabId) {
             const tab = this.tabs.find(tab => tab.id === this.activeTabId);
             if (tab) {
                 tab.textContent = this.textEditor.value;
-                tab.markdownContent = this.markdownEditor.value;
             }
         }
     }
@@ -455,6 +290,7 @@ class MarkdownEditor {
                 this.showAutoSaveIndicator();
             } catch (error) {
                 console.error('自动保存失败:', error);
+                this.updateStatus('自动保存失败', 3000);
             }
         }
     }
@@ -464,11 +300,29 @@ class MarkdownEditor {
         const originalText = this.saveBtn.textContent;
         this.saveBtn.textContent = '✓';
         this.saveBtn.classList.add('saved');
+        this.updateStatus('已自动保存', 1500);
         
         setTimeout(() => {
             this.saveBtn.textContent = originalText;
             this.saveBtn.classList.remove('saved');
         }, 1000);
+    }
+
+    updateStatus(message, revertDelay = 0) {
+        if (!this.statusPill) return;
+
+        this.statusPill.textContent = message;
+
+        if (this.statusResetTimer) {
+            clearTimeout(this.statusResetTimer);
+        }
+
+        if (revertDelay > 0) {
+            this.statusResetTimer = setTimeout(() => {
+                this.statusPill.textContent = '就绪';
+                this.statusResetTimer = null;
+            }, revertDelay);
+        }
     }
     
     toggleTheme() {
@@ -486,23 +340,50 @@ class MarkdownEditor {
     }
     
     updateFontSize(size) {
-        this.fontSize = parseInt(size);
-        this.fontSizeValue.textContent = `${this.fontSize}px`;
-        this.textEditor.style.fontSize = `${this.fontSize}px`;
-        this.markdownEditor.style.fontSize = `${this.fontSize}px`;
-        this.saveSettings();
+        this.textEditor.style.fontSize = size + 'px';
+        this.fontSizeValue.textContent = size + 'px';
+    }
+
+    // 根据文本内容更新标签标题
+    updateTabTitle(tabId) {
+        const tab = this.tabs.find(t => t.id === tabId);
+        if (!tab) return;
+
+        const content = this.textEditor.value.trim();
+        let newTitle;
+
+        if (content === '') {
+            // 如果内容为空，使用默认标题
+            newTitle = `便签 ${tab.id.split('_')[1]}`;
+        } else {
+            // 提取第一行内容
+            const firstLine = content.split('\n')[0].trim();
+            // 限制标题长度，超过20个字符就截取
+            newTitle = firstLine.length > 20 ? firstLine.substring(0, 20) + '...' : firstLine;
+            // 如果第一行为空，使用第二行或默认标题
+            if (newTitle === '') {
+                const lines = content.split('\n').filter(line => line.trim() !== '');
+                newTitle = lines.length > 0 ? 
+                    (lines[0].length > 20 ? lines[0].substring(0, 20) + '...' : lines[0]) :
+                    `便签 ${tab.id.split('_')[1]}`;
+            }
+        }
+
+        // 更新标签标题
+        tab.title = newTitle;
+        this.renderTabs();
     }
     
     saveAllTabs() {
         this.saveBtn.classList.add('saving');
         this.saveBtn.textContent = '💾 保存中...';
+        this.updateStatus('保存中...');
         
         // 保存当前编辑器内容到活动标签
         if (this.activeTabId) {
             const activeTab = this.tabs.find(tab => tab.id === this.activeTabId);
             if (activeTab) {
                 activeTab.textContent = this.textEditor.value;
-                activeTab.markdownContent = this.markdownEditor.value;
             }
         }
         
@@ -515,6 +396,7 @@ class MarkdownEditor {
             this.saveBtn.classList.remove('saving');
             this.saveBtn.classList.add('saved');
             this.saveBtn.textContent = '💾 已保存';
+            this.updateStatus('保存完成', 1500);
             
             setTimeout(() => {
                 this.saveBtn.classList.remove('saved');
@@ -524,31 +406,42 @@ class MarkdownEditor {
     }
     
     async saveTab(tab) {
+        const textContent = tab.textContent || '';
+        const markdownContent = tab.markdownContent || '';
+        const hasContent = textContent.trim() !== '' || markdownContent.trim() !== '';
+        
+        // 如果内容为空，删除标签
+        if (!hasContent) {
+            localStorage.removeItem(`kamineko_tab_${tab.id}`);
+            console.log(`删除空内容标签: ${tab.title || tab.id}`);
+            return;
+        }
+        
+        // 构建标签数据
         const tabData = {
             id: tab.id,
             title: tab.title,
-            textContent: tab.textContent || '',
-            markdownContent: tab.markdownContent || '',
-            created: tab.created,
+            textContent: textContent,
+            markdownContent: markdownContent,
+            created: tab.created || new Date().toISOString(),
             modified: new Date().toISOString()
         };
         
         // 保存到localStorage
         localStorage.setItem(`kamineko_tab_${tab.id}`, JSON.stringify(tabData));
-        console.log(`标签 ${tab.title} 已保存到本地存储`);
+        console.log(`标签已保存: ${tab.title || tab.id}`);
     }
 
     async deleteTabFile(tabId) {
-        // 从localStorage删除
         localStorage.removeItem(`kamineko_tab_${tabId}`);
-        console.log(`标签文件 ${tabId} 已从本地存储删除`);
+        console.log(`标签 ${tabId} 已删除`);
     }
 
     async loadTabs() {
+        // 从localStorage加载
         const settings = this.loadSettings();
         let tabIds = settings.tabOrder || [];
         
-        // 从localStorage加载标签
         tabIds.forEach(tabId => {
             const tabData = localStorage.getItem(`kamineko_tab_${tabId}`);
             if (tabData) {
@@ -578,16 +471,36 @@ class MarkdownEditor {
             const activeTab = this.tabs.find(tab => tab.id === this.activeTabId);
             if (activeTab) {
                 this.textEditor.value = activeTab.textContent || '';
-                this.markdownEditor.value = activeTab.markdownContent || '';
-                this.updateLeftPane();
-                this.updateRightPane();
+                // 加载后更新标题
+                this.updateTabTitle(this.activeTabId);
             }
         }
         
         // 应用字号设置
         if (this.fontSize) {
             this.textEditor.style.fontSize = `${this.fontSize}px`;
-            this.markdownEditor.style.fontSize = `${this.fontSize}px`;
+        }
+    }
+    
+    async cleanupEmptyTabs() {
+        try {
+            const response = await fetch('/api/cleanup', {
+                method: 'POST'
+            });
+            const result = await response.json();
+            
+            if (result.success) {
+                console.log(result.message);
+                // 重新加载标签列表以反映清理后的状态
+                const updatedResponse = await fetch('/api/tabs');
+                const updatedResult = await updatedResponse.json();
+                
+                if (updatedResult.success) {
+                    this.tabs = updatedResult.tabs;
+                }
+            }
+        } catch (error) {
+            console.error('清理空标签时发生错误:', error);
         }
     }
     
@@ -621,7 +534,6 @@ class MarkdownEditor {
                 this.fontSizeSlider.value = this.fontSize;
                 this.fontSizeValue.textContent = `${this.fontSize}px`;
                 this.textEditor.style.fontSize = `${this.fontSize}px`;
-                this.markdownEditor.style.fontSize = `${this.fontSize}px`;
             }
             
             return settings;
@@ -635,7 +547,7 @@ class MarkdownEditor {
 // 初始化应用
 let editor;
 document.addEventListener('DOMContentLoaded', () => {
-    editor = new MarkdownEditor();
+    editor = new TextEditor();
 });
 
 // 导出到全局作用域以便HTML中的事件处理器使用

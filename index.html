@@ -4,53 +4,71 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>KamiNeko 在线便签编辑器</title>
+    <link rel="stylesheet" href="vendor/system.css/style.css">
     <link rel="stylesheet" href="styles.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css" id="highlight-theme">
 </head>
 <body>
-    <div class="app" id="app">
-        <!-- 顶部工具栏 -->
-        <div class="toolbar">
-            <div class="tabs-container">
-                <div class="tabs" id="tabs"></div>
-                <button class="new-tab-btn" id="newTabBtn" title="新建标签">+</button>
-            </div>
-            <div class="controls">
-                <div class="font-size-control">
-                    <label for="fontSizeSlider">字号:</label>
-                    <input type="range" id="fontSizeSlider" min="12" max="24" value="14" class="slider">
-                    <span id="fontSizeValue">14px</span>
+    <div class="desktop">
+        <main class="workspace">
+            <div class="window editor-window">
+                <div class="title-bar">
+                    <button aria-label="Close" class="close"></button>
+                    <h1 class="title">KamiNeko</h1>
+                    <button aria-label="Resize" class="resize"></button>
                 </div>
-                <button class="theme-toggle" id="themeToggle" title="切换主题">🌙</button>
-                <button class="save-btn" id="saveBtn" title="保存 (Ctrl+S)">💾</button>
-            </div>
-        </div>
+                
 
-        <!-- 主编辑区域 -->
-        <div class="editor-container">
-            <div class="editor-pane">
-                <div class="pane-header">
-                    <h3>文本编辑器</h3>
-                    <button class="mode-toggle" id="leftModeToggle" title="切换模式">📝</button>
+                <div class="window-pane">
+                    <header>
+                        <ul role="menu-bar">
+                            <li role="menu-item" tabindex="0">
+                                <button class="menu-item-btn" type="button">File</button>
+                            </li>
+                            <li role="menu-item" tabindex="0">
+                                <button class="menu-item-btn" type="button">Edit</button>
+                            </li>
+                            <li role="menu-item" tabindex="0">
+                                <button class="menu-item-btn" type="button">View</button>
+                            </li>
+                            <li role="menu-item" tabindex="0">
+                                <button class="menu-item-btn" type="button">Tools</button>
+                            </li>
+                            <li role="menu-item" tabindex="0">
+                                <button class="menu-item-btn" type="button">Help</button>
+                            </li>
+                        </ul>
+                    </header>
+                    <div class="app" id="app">
+                        <!-- 顶部工具栏 -->
+                        <div class="toolbar">
+                            <div class="tabs-container">
+                                <div class="tabs" id="tabs"></div>
+                                <button class="new-tab-btn" id="newTabBtn" title="新建标签">+</button>
+                            </div>
+                            <div class="controls">
+                                <div class="font-size-control">
+                                    <label for="fontSizeSlider">字号:</label>
+                                    <input type="range" id="fontSizeSlider" min="12" max="24" value="14" class="slider">
+                                    <span id="fontSizeValue">14px</span>
+                                </div>
+                                <button class="theme-toggle" id="themeToggle" title="切换主题">🌙</button>
+                                <button class="save-btn" id="saveBtn" title="保存 (Ctrl+S)">💾</button>
+                            </div>
+                        </div>
+
+                        <!-- 主编辑区域 -->
+                        <div class="editor-container">
+                            <div class="editor-pane single-editor">
+                                <textarea id="textEditor" placeholder="在这里输入文本内容..."></textarea>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <textarea id="textEditor" placeholder="在这里输入普通文本..."></textarea>
-                <div id="textPreview" class="preview-content" style="display: none;"></div>
             </div>
-            <div class="resize-handle" id="resizeHandle"></div>
-            <div class="preview-pane">
-                <div class="pane-header">
-                    <h3>Markdown 编辑器</h3>
-                    <button class="mode-toggle" id="rightModeToggle" title="切换模式">📝</button>
-                </div>
-                <textarea id="markdownEditor" placeholder="在这里输入 Markdown 内容..."></textarea>
-                <div id="markdownPreview" class="preview-content" style="display: none;"></div>
-            </div>
-        </div>
+        </main>
     </div>
 
     <!-- 外部库 -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
     
     <!-- 主脚本 -->
