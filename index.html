@@ -21,14 +21,27 @@
                 <div class="window-pane">
                     <header>
                         <ul role="menu-bar">
-                            <li role="menu-item" tabindex="0">
-                                <button class="menu-item-btn" type="button">File</button>
+                            <li role="menu-item" tabindex="0" aria-haspopup="true">
+                                File
+                                <ul role="menu">
+                                    <li role="menu-item"><a href="#" onclick="editor.saveAllTabs(); return false;" title="保存 (Ctrl+S)">💾 保存</a></li>
+                                </ul>
                             </li>
-                            <li role="menu-item" tabindex="0">
-                                <button class="menu-item-btn" type="button">Edit</button>
+                            <li role="menu-item" tabindex="0" aria-haspopup="true">
+                                Edit
+                                <ul role="menu">
+                                    <li role="menu-item"><a href="#menu">撤销</a></li>
+                                    <li role="menu-item"><a href="#menu">重做</a></li>
+                                    <li role="menu-item" class="divider"><a href="#menu">复制</a></li>
+                                    <li role="menu-item"><a href="#menu">粘贴</a></li>
+                                </ul>
                             </li>
-                            <li role="menu-item" tabindex="0">
-                                <button class="menu-item-btn" type="button">View</button>
+                            <li role="menu-item" tabindex="0" aria-haspopup="true">
+                                View
+                                <ul role="menu">
+                                    <li role="menu-item"><a href="#menu">全屏</a></li>
+                                    <li role="menu-item"><a href="#menu">缩放</a></li>
+                                </ul>
                             </li>
                             <li role="menu-item" tabindex="0">
                                 <button class="menu-item-btn" type="button">Tools</button>
@@ -52,7 +65,6 @@
                                     <span id="fontSizeValue">14px</span>
                                 </div>
                                 <button class="theme-toggle" id="themeToggle" title="切换主题">🌙</button>
-                                <button class="save-btn" id="saveBtn" title="保存 (Ctrl+S)">💾</button>
                             </div>
                         </div>
 

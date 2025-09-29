@@ -34,7 +34,6 @@ class TextEditor {
         this.newTabBtn = document.getElementById('newTabBtn');
         this.textEditor = document.getElementById('textEditor');
         this.themeToggle = document.getElementById('themeToggle');
-        this.saveBtn = document.getElementById('saveBtn');
         this.fontSizeSlider = document.getElementById('fontSizeSlider');
         this.fontSizeValue = document.getElementById('fontSizeValue');
         this.editorPane = document.querySelector('.editor-pane');
@@ -63,9 +62,6 @@ class TextEditor {
         
         // 主题切换
         this.themeToggle.addEventListener('click', () => this.toggleTheme());
-        
-        // 保存
-        this.saveBtn.addEventListener('click', () => this.saveAllTabs());
         
         // 字号调整
         this.fontSizeSlider.addEventListener('input', (e) => this.updateFontSize(e.target.value));
@@ -296,16 +292,8 @@ class TextEditor {
     }
 
     showAutoSaveIndicator() {
-        // 临时显示保存状态
-        const originalText = this.saveBtn.textContent;
-        this.saveBtn.textContent = '✓';
-        this.saveBtn.classList.add('saved');
+        // 显示自动保存状态
         this.updateStatus('已自动保存', 1500);
-        
-        setTimeout(() => {
-            this.saveBtn.textContent = originalText;
-            this.saveBtn.classList.remove('saved');
-        }, 1000);
     }
 
     updateStatus(message, revertDelay = 0) {
@@ -375,8 +363,6 @@ class TextEditor {
     }
     
     saveAllTabs() {
-        this.saveBtn.classList.add('saving');
-        this.saveBtn.textContent = '💾 保存中...';
         this.updateStatus('保存中...');
         
         // 保存当前编辑器内容到活动标签
@@ -393,15 +379,7 @@ class TextEditor {
         
         // 显示保存完成状态
         setTimeout(() => {
-            this.saveBtn.classList.remove('saving');
-            this.saveBtn.classList.add('saved');
-            this.saveBtn.textContent = '💾 已保存';
             this.updateStatus('保存完成', 1500);
-            
-            setTimeout(() => {
-                this.saveBtn.classList.remove('saved');
-                this.saveBtn.textContent = '💾';
-            }, 1000);
         }, 300);
     }
     
